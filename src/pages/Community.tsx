@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, FormEvent } from "react"
 import { motion, AnimatePresence } from "motion/react"
-import { MessageSquare, Plus, Clock, CheckCircle2, Users, ArrowUpCircle } from "lucide-react"
+import { MessageSquare, Plus, Clock, CheckCircle2, Users, ArrowUpCircle, Trash2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, where, Timestamp, getDocs, updateDoc } from "firebase/firestore"
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, where, Timestamp, getDocs, updateDoc, deleteDoc } from "firebase/firestore"
 import { db, auth } from "@/lib/firebase"
 import { onAuthStateChanged } from "firebase/auth"
 
@@ -15,6 +15,8 @@ export default function Community() {
   const [showToast, setShowToast] = useState(false)
   const [requests, setRequests] = useState<any[]>([])
   const [user, setUser] = useState<any>(null)
+
+  const isAdmin = user && (user.email === 'rasalswastik09@gmail.com' || user.email === 'misaldhananjay26@gmail.com')
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, setUser)
@@ -32,7 +34,7 @@ export default function Community() {
     }
   }, [])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!user) {
       alert("Please login first to submit a request.")
@@ -43,15 +45,17 @@ export default function Community() {
     const target = e.target as any
 
     try {
-      // Rate Limit Check
-      const twentyFourHoursAgo = Timestamp.fromDate(new Date(Date.now() - 24 * 60 * 60 * 1000))
-      const userReqsQ = query(collection(db, "requests"), where("userId", "==", user.uid), where("createdAt", ">=", twentyFourHoursAgo))
-      const userReqsSnap = await getDocs(userReqsQ)
-      
-      if (userReqsSnap.size >= 2) {
-        alert("You have reached the limit of 2 submissions per 24 hours. Please wait before submitting another project.")
-        setIsSubmitting(false)
-        return
+      // Rate Limit Check (unless admin)
+      if (!isAdmin) {
+        const twentyFourHoursAgo = Timestamp.fromDate(new Date(Date.now() - 24 * 60 * 60 * 1000))
+        const userReqsQ = query(collection(db, "requests"), where("userId", "==", user.uid), where("createdAt", ">=", twentyFourHoursAgo))
+        const userReqsSnap = await getDocs(userReqsQ)
+        
+        if (userReqsSnap.size >= 2) {
+          alert("You have reached the limit of 2 submissions per 24 hours. Please wait before submitting another project.")
+          setIsSubmitting(false)
+          return
+        }
       }
 
       // 1. Add public request
@@ -96,6 +100,17 @@ export default function Community() {
       })
     } catch (err) {
       console.error(err)
+    }
+  }
+
+  const handleDelete = async (requestId: string) => {
+    if (!window.confirm("Are you sure you want to delete this project request?")) return
+
+    try {
+      await deleteDoc(doc(db, "requests", requestId))
+    } catch (err: any) {
+      console.error(err)
+      alert("Failed to delete request: " + err.message)
     }
   }
 
@@ -181,7 +196,16 @@ export default function Community() {
           <CardContent className="flex flex-col gap-3">
             {requests.length > 0 ? (
               requests.map((req) => (
-                <div key={req.id} className="p-3 bg-white/5 border border-white/5 rounded-xl flex gap-3">
+                <div key={req.id} className="p-3 bg-white/5 border border-white/5 rounded-xl flex gap-3 relative group/item">
+                  {isAdmin && (
+                    <button 
+                      onClick={() => handleDelete(req.id)}
+                      className="absolute top-2 right-2 p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg opacity-0 group-hover/item:opacity-100 transition-opacity"
+                      title="Delete request"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   <div className="flex flex-col items-center justify-start pt-1">
                     <button 
                       onClick={() => handleUpvote(req.id, req.upvotes || [])}
@@ -196,7 +220,7 @@ export default function Community() {
                       <h4 className="text-xs font-bold text-gray-100">{req.name}</h4>
                       <span className="text-green-400 text-[10px] font-mono font-bold tracking-tight">{req.budget}</span>
                     </div>
-                    <p className="text-[10px] text-gray-400 leading-relaxed mb-4">"{req.idea}"</p>
+                    <p className="text-[10px] text-gray-400 leading-relaxed mb-4 pr-6">"{req.idea}"</p>
                     <div className="flex items-center justify-between mt-auto">
                       <span className="text-[9px] text-gray-500 flex items-center gap-1 font-medium">
                         <Clock className="w-3 h-3" /> {formatTime(req.createdAt)}

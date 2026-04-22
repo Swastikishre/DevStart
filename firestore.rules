@@ -16,7 +16,16 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && request.auth.token.email_verified == true && 
-        (request.auth.token.email == 'rasalswastik09@gmail.com' || request.auth.token.email == 'misaldhananjay26@gmail.com');
+        (request.auth.token.email == 'rasalswastik09@gmail.com' || request.auth.token.email == 'misaldhananjay26@gmail.com' ||
+         exists(/databases/$(database)/documents/admins/$(request.auth.token.email)));
+    }
+
+    match /admins/{email} {
+      // Only existing admins can read or manage other admins
+      // But we must use get() on a specific doc or check the hardcoded list to avoid recursion in rules if possible,
+      // however exists() inside isAdmin helper already does a read.
+      // To keep it simple and secure:
+      allow read, write: if isAdmin();
     }
 
     function incoming() {

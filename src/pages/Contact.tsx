@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, FormEvent } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { Mail, MapPin, MessageCircle, CheckCircle2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -13,7 +13,7 @@ export default function Contact() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showToast, setShowToast] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     const target = e.target as any
