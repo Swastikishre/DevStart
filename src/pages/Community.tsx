@@ -153,10 +153,11 @@ export default function Community() {
                     required
                   >
                     <option value="" disabled>Select a range</option>
-                    <option value="< $2k">Under $2,000</option>
-                    <option value="$2k - $5k">$2,000 - $5,000</option>
-                    <option value="$5k - $10k">$5,000 - $10,000</option>
-                    <option value="$10k+">$10,000+</option>
+                    <option value="Below $100">Below $100</option>
+                    <option value="$100 - $200">$100 - $200</option>
+                    <option value="$200 - $300">$200 - $300</option>
+                    <option value="$300 - $500">$300 - $500</option>
+                    <option value="Above $500">Above $500</option>
                   </select>
                 </div>
                 <Button type="submit" variant="neon" className="w-full mt-2" isLoading={isSubmitting}>

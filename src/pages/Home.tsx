@@ -87,7 +87,7 @@ export default function Home() {
             </motion.p>
             
             <motion.div variants={FADE_UP_ANIMATION_VARIANTS} className="flex gap-4 mt-8">
-              <Link to="/contact">
+              <Link to="/community">
                 <button className="bg-purple-600 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-lg shadow-purple-500/20 hover:bg-purple-700 transition">
                   Start Project
                 </button>
@@ -192,12 +192,14 @@ export default function Home() {
                  <option>Type: Landing</option>
                </select>
                <select className="bg-white/5 border border-white/10 rounded-xl p-2 text-xs text-gray-400 outline-none focus:border-purple-500 transition [&>*]:bg-[#0A0A0A]">
-                 <option>Budget: $2k - $5k</option>
-                 <option>Budget: $5k - $15k</option>
-                 <option>Budget: $15k+</option>
+                 <option>Budget: Below $100</option>
+                 <option>Budget: $100 - $200</option>
+                 <option>Budget: $200 - $300</option>
+                 <option>Budget: $300 - $500</option>
+                 <option>Budget: Above $500</option>
                </select>
              </div>
-             <Link to="/contact"><button className="w-full bg-blue-600 text-white font-bold py-2 rounded-xl text-xs mt-1 hover:bg-blue-700 transition">Send Brief</button></Link>
+             <Link to="/community"><button className="w-full bg-blue-600 text-white font-bold py-2 rounded-xl text-xs mt-1 hover:bg-blue-700 transition">Send Brief</button></Link>
            </div>
         </div>
       </div>
