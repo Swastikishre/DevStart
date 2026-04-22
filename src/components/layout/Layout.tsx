@@ -1,6 +1,6 @@
 import Navbar from "./Navbar"
 import Footer from "./Footer"
-import WhatsAppWidget from "./WhatsAppWidget"
+import SocialWidgets from "./SocialWidgets"
 import { Outlet } from "react-router-dom"
 
 export default function Layout() {
@@ -11,7 +11,7 @@ export default function Layout() {
         <Outlet />
       </main>
       <Footer />
-      <WhatsAppWidget />
+      <SocialWidgets />
     </div>
   )
 }
