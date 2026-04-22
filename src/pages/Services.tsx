@@ -47,6 +47,13 @@ export default function Services() {
         <div className="flex flex-col gap-6">
           {[
             {
+              name: "Beginner Platform",
+              price: "$50",
+              desc: "Perfect for early-stage startups needing a landing page and waitlist. 1 Week Delivery.",
+              features: ["4 Days Free Trial", "Simple Website", "Responsive UI"],
+              popular: false
+            },
+            {
               name: "MVP Starter",
               price: "$100",
               desc: "Perfect for early-stage startups needing a landing page and waitlist. 1 Week Delivery.",
