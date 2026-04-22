@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "motion/react"
-import { MessageSquare, Plus, Clock, CheckCircle2, Users } from "lucide-react"
+import { MessageSquare, Plus, Clock, CheckCircle2, Users, ArrowUpCircle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc } from "firebase/firestore"
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, where, Timestamp, getDocs, updateDoc } from "firebase/firestore"
 import { db, auth } from "@/lib/firebase"
 import { onAuthStateChanged } from "firebase/auth"
 
@@ -19,7 +19,9 @@ export default function Community() {
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, setUser)
     
-    const q = query(collection(db, "requests"), orderBy("createdAt", "desc"))
+    const twentyFourHoursAgo = Timestamp.fromDate(new Date(Date.now() - 24 * 60 * 60 * 1000))
+
+    const q = query(collection(db, "requests"), where("createdAt", ">=", twentyFourHoursAgo), orderBy("createdAt", "desc"))
     const unsubscribeDocs = onSnapshot(q, (snapshot) => {
       setRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
     })
@@ -41,6 +43,17 @@ export default function Community() {
     const target = e.target as any
 
     try {
+      // Rate Limit Check
+      const twentyFourHoursAgo = Timestamp.fromDate(new Date(Date.now() - 24 * 60 * 60 * 1000))
+      const userReqsQ = query(collection(db, "requests"), where("userId", "==", user.uid), where("createdAt", ">=", twentyFourHoursAgo))
+      const userReqsSnap = await getDocs(userReqsQ)
+      
+      if (userReqsSnap.size >= 2) {
+        alert("You have reached the limit of 2 submissions per 24 hours. Please wait before submitting another project.")
+        setIsSubmitting(false)
+        return
+      }
+
       // 1. Add public request
       const docRef = await addDoc(collection(db, "requests"), {
         name: target.name.value,
@@ -48,6 +61,7 @@ export default function Community() {
         budget: target.budget.value,
         status: "In Review",
         userId: user.uid,
+        upvotes: [],
         createdAt: serverTimestamp()
       })
 
@@ -64,6 +78,24 @@ export default function Community() {
       alert("Failed to post request: " + err.message)
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleUpvote = async (requestId: string, currentUpvotes: string[]) => {
+    if (!user) {
+      alert("Please login to upvote")
+      return
+    }
+    
+    // Prevent double voting or self voting (optional, but good practice)
+    if (currentUpvotes.includes(user.uid)) return
+
+    try {
+      await updateDoc(doc(db, "requests", requestId), {
+        upvotes: [...currentUpvotes, user.uid]
+      })
+    } catch (err) {
+      console.error(err)
     }
   }
 
@@ -139,7 +171,7 @@ export default function Community() {
       <div className="col-span-5 h-full">
         <Card className="h-full flex flex-col">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-bold uppercase tracking-wider text-gray-500">Live Feed</CardTitle>
+            <CardTitle className="text-sm font-bold uppercase tracking-wider text-gray-500">Live Feed (Last 24h)</CardTitle>
             <div className="flex gap-2 items-center">
               <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
               <span className="text-[10px] text-gray-400">Online</span>
@@ -148,23 +180,34 @@ export default function Community() {
           <CardContent className="flex flex-col gap-3">
             {requests.length > 0 ? (
               requests.map((req) => (
-                <div key={req.id} className="p-3 bg-white/5 border border-white/5 rounded-xl">
-                  <div className="flex justify-between items-start mb-1">
-                    <h4 className="text-xs font-bold text-gray-100">{req.name}</h4>
-                    <span className="text-green-400 text-[10px] font-mono font-bold tracking-tight">{req.budget}</span>
+                <div key={req.id} className="p-3 bg-white/5 border border-white/5 rounded-xl flex gap-3">
+                  <div className="flex flex-col items-center justify-start pt-1">
+                    <button 
+                      onClick={() => handleUpvote(req.id, req.upvotes || [])}
+                      className={`transition-colors ${user && (req.upvotes || []).includes(user.uid) ? 'text-purple-400' : 'text-gray-500 hover:text-purple-300'}`}
+                    >
+                      <ArrowUpCircle className="w-5 h-5" />
+                    </button>
+                    <span className="text-xs font-bold mt-1 text-gray-300">{(req.upvotes || []).length}</span>
                   </div>
-                  <p className="text-[10px] text-gray-400 leading-relaxed mb-4">"{req.idea}"</p>
-                  <div className="flex items-center justify-between mt-auto">
-                    <span className="text-[9px] text-gray-500 flex items-center gap-1 font-medium">
-                      <Clock className="w-3 h-3" /> {formatTime(req.createdAt)}
-                    </span>
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-widest ${
-                      req.status === 'Completed' ? 'bg-white/10 text-gray-400' :
-                      req.status === 'Accepted' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                      'bg-orange-500/10 text-orange-400 border border-orange-500/20'
-                    }`}>
-                      {req.status}
-                    </span>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start mb-1">
+                      <h4 className="text-xs font-bold text-gray-100">{req.name}</h4>
+                      <span className="text-green-400 text-[10px] font-mono font-bold tracking-tight">{req.budget}</span>
+                    </div>
+                    <p className="text-[10px] text-gray-400 leading-relaxed mb-4">"{req.idea}"</p>
+                    <div className="flex items-center justify-between mt-auto">
+                      <span className="text-[9px] text-gray-500 flex items-center gap-1 font-medium">
+                        <Clock className="w-3 h-3" /> {formatTime(req.createdAt)}
+                      </span>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-widest ${
+                        req.status === 'Completed' ? 'bg-white/10 text-gray-400' :
+                        req.status === 'Accepted' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                        'bg-orange-500/10 text-orange-400 border border-orange-500/20'
+                      }`}>
+                        {req.status}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))

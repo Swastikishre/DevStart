@@ -28,13 +28,14 @@ service cloud.firestore {
     }
 
     function isValidRequestPublic(data) {
-      return data.keys().hasAll(['name', 'idea', 'budget', 'status', 'userId', 'createdAt']) &&
-        data.keys().size() == 6 &&
+      return data.keys().hasAll(['name', 'idea', 'budget', 'status', 'userId', 'upvotes', 'createdAt']) &&
+        data.keys().size() == 7 &&
         data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
         data.idea is string && data.idea.size() > 0 && data.idea.size() <= 2000 &&
         data.budget is string && data.budget.size() > 0 && data.budget.size() <= 50 &&
         data.status is string && data.status in ['In Review', 'Accepted', 'Completed'] &&
         data.userId == request.auth.uid &&
+        data.upvotes is list && data.upvotes.size() <= 10000 &&
         data.createdAt == request.time;
     }
     
@@ -67,9 +68,16 @@ service cloud.firestore {
       allow read: if true; 
       allow create: if isSignedIn() && isValidId(requestId) && isValidRequestPublic(incoming());
       
-      // Allow admins to update status
-      allow update: if (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status']) &&
-                       incoming().status in ['In Review', 'Accepted', 'Completed']) || isAdmin();
+      // Allow admins to update status, allow users to vote
+      allow update: if (
+        (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status']) &&
+        incoming().status in ['In Review', 'Accepted', 'Completed']) ||
+        
+        (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['upvotes']) &&
+        incoming().upvotes is list && incoming().upvotes.size() <= 10000)
+        
+        || isAdmin()
+      );
                        
       allow delete: if isAdmin();
 

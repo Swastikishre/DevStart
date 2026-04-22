@@ -53,7 +53,6 @@ export default function Navbar() {
 
   const links = [
     { name: "Services", href: "/services" },
-    { name: "Portfolio", href: "/portfolio" },
     { name: "Community", href: "/community" },
     { name: "About", href: "/about" },
     { name: "Contact", href: "/contact" },

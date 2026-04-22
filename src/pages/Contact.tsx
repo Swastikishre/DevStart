@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { collection, addDoc, serverTimestamp } from "firebase/firestore"
+import { collection, addDoc, serverTimestamp, query, where, getDocs, Timestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
 export default function Contact() {
@@ -17,11 +17,23 @@ export default function Contact() {
     e.preventDefault()
     setIsSubmitting(true)
     const target = e.target as any
+    const email = target.email.value
     
     try {
+      // Rate Limit Check
+      const twentyFourHoursAgo = Timestamp.fromDate(new Date(Date.now() - 24 * 60 * 60 * 1000))
+      const userContactsQ = query(collection(db, "contacts"), where("email", "==", email), where("createdAt", ">=", twentyFourHoursAgo))
+      const userContactsSnap = await getDocs(userContactsQ)
+      
+      if (userContactsSnap.size >= 2) {
+        alert("You have reached the limit of 2 messages per 24 hours. Please wait or contact us via WhatsApp.")
+        setIsSubmitting(false)
+        return
+      }
+
       await addDoc(collection(db, "contacts"), {
         name: `${target.firstName.value} ${target.lastName.value}`.trim(),
-        email: target.email.value,
+        email: email,
         type: target.company.value || "Individual",
         budget: "Not specified", // From other form, just default string here to match schema
         message: target.message.value,

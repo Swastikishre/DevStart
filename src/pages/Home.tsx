@@ -1,10 +1,10 @@
-import { motion } from "motion/react"
+import { motion, useMotionTemplate, useMotionValue } from "motion/react"
 import { ArrowRight, CheckCircle2, Code2, Layout as LayoutIcon, Rocket, Star, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Link } from "react-router-dom"
-import { useState, useEffect } from "react"
-import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore"
+import { useState, useEffect, MouseEvent } from "react"
+import { collection, query, orderBy, limit, onSnapshot, where, Timestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
 const FADE_UP_ANIMATION_VARIANTS = {
@@ -15,9 +15,22 @@ const FADE_UP_ANIMATION_VARIANTS = {
 export default function Home() {
   const [requests, setRequests] = useState<any[]>([])
 
+  // Interactive mouse tracking
+  const mouseX = useMotionValue(0)
+  const mouseY = useMotionValue(0)
+
+  function handleMouseMove({ currentTarget, clientX, clientY }: MouseEvent) {
+    const { left, top } = currentTarget.getBoundingClientRect()
+    mouseX.set(clientX - left)
+    mouseY.set(clientY - top)
+  }
+
   useEffect(() => {
+    const twentyFourHoursAgo = Timestamp.fromDate(new Date(Date.now() - 24 * 60 * 60 * 1000))
+
     const q = query(
       collection(db, "requests"),
+      where("createdAt", ">=", twentyFourHoursAgo),
       orderBy("createdAt", "desc"),
       limit(3)
     )
@@ -31,9 +44,24 @@ export default function Home() {
   return (
     <div className="w-full flex md:grid grid-cols-12 flex-col gap-4 p-4">
       <div className="col-span-7 flex flex-col gap-4">
-        {/* Hero Section */}
-        <section className="bg-gradient-to-tr from-[#111] to-[#0A0A0A] border border-white/5 rounded-2xl p-8 flex flex-col justify-center relative overflow-hidden h-[360px]">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 blur-[100px]" />
+        {/* Interactive Hero Section */}
+        <section 
+          className="bg-gradient-to-tr from-[#000] to-[#0A0A0A] border border-white/5 rounded-2xl p-8 flex flex-col justify-center relative overflow-hidden h-[360px] group"
+          onMouseMove={handleMouseMove}
+        >
+          <motion.div
+            className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 transition duration-300 group-hover:opacity-100"
+            style={{
+              background: useMotionTemplate`
+                radial-gradient(
+                  500px circle at ${mouseX}px ${mouseY}px,
+                  rgba(168, 85, 247, 0.15),
+                  transparent 80%
+                )
+              `,
+            }}
+          />
+          <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 blur-[100px] pointer-events-none" />
           
           <motion.div
             initial="hidden"
