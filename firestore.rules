@@ -1,0 +1,85 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email_verified == true && 
+        (request.auth.token.email == 'rasalswastik09@gmail.com' || request.auth.token.email == 'misaldhananjay26@gmail.com');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidRequestPublic(data) {
+      return data.keys().hasAll(['name', 'idea', 'budget', 'status', 'userId', 'createdAt']) &&
+        data.keys().size() == 6 &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+        data.idea is string && data.idea.size() > 0 && data.idea.size() <= 2000 &&
+        data.budget is string && data.budget.size() > 0 && data.budget.size() <= 50 &&
+        data.status is string && data.status in ['In Review', 'Accepted', 'Completed'] &&
+        data.userId == request.auth.uid &&
+        data.createdAt == request.time;
+    }
+    
+    function isValidRequestPrivate(data) {
+      return data.keys().hasAll(['email']) &&
+        data.keys().size() == 1 &&
+        data.email is string && data.email.size() > 0 && data.email.size() <= 150;
+    }
+
+    function isValidContactMessage(data) {
+      return data.keys().hasAll(['name', 'email', 'type', 'budget', 'message', 'createdAt']) &&
+        data.keys().size() == 6 &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+        data.email is string && data.email.size() > 0 && data.email.size() <= 150 &&
+        data.type is string && data.type.size() > 0 && data.type.size() <= 100 &&
+        data.budget is string && data.budget.size() > 0 && data.budget.size() <= 100 &&
+        data.message is string && data.message.size() > 0 && data.message.size() <= 3000 &&
+        data.createdAt == request.time;
+    }
+
+    match /contacts/{contactId} {
+      // Allow anyone to send a contact message
+      allow create: if isValidId(contactId) && isValidContactMessage(incoming());
+      // Only admins can read, update, or delete contact messages
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /requests/{requestId} {
+      // Anyone can read public requests feed
+      allow read: if true; 
+      allow create: if isSignedIn() && isValidId(requestId) && isValidRequestPublic(incoming());
+      
+      // Allow admins to update status
+      allow update: if (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status']) &&
+                       incoming().status in ['In Review', 'Accepted', 'Completed']) || isAdmin();
+                       
+      allow delete: if isAdmin();
+
+      match /private/contact {
+        // Owner and admin can read private contact info
+        allow read: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/requests/$(requestId)).data.userId == request.auth.uid);
+        allow create: if isSignedIn() && isValidRequestPrivate(incoming()) && getAfter(/databases/$(database)/documents/requests/$(requestId)).data.userId == request.auth.uid;
+        allow update: if false;
+        allow delete: if isAdmin();
+      }
+    }
+  }
+}

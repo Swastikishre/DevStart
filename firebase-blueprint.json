@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "ProjectRequest": {
+      "title": "Project Request",
+      "description": "A project request submitted by a community member.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name or company of the requester."
+        },
+        "idea": {
+          "type": "string",
+          "description": "Description of the project."
+        },
+        "budget": {
+          "type": "string",
+          "description": "Budget range."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["In Review", "Accepted", "Completed"],
+          "description": "Status of the request."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of creation."
+        }
+      },
+      "required": ["name", "idea", "budget", "status", "userId", "createdAt"]
+    },
+    "ProjectRequestPrivate": {
+      "title": "Project Request Private Info",
+      "description": "PII for a project request.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        }
+      },
+      "required": ["email"]
+    },
+    "ContactMessage": {
+      "title": "Contact Message",
+      "description": "Message from the contact form.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "type": { "type": "string" },
+        "budget": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "type", "budget", "message", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/requests/{requestId}": {
+      "schema": "ProjectRequest",
+      "description": "Collection of project requests."
+    },
+    "/requests/{requestId}/private/contact": {
+      "schema": "ProjectRequestPrivate",
+      "description": "Private contact info for the request."
+    },
+    "/contacts/{contactId}": {
+      "schema": "ContactMessage",
+      "description": "Messages from the contact form."
+    }
+  }
+}
